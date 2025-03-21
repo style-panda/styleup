@@ -65,18 +65,40 @@ def main(context):
         if key not in ('CONTENT_TYPE', 'CONTENT_LENGTH'):
             environ[f'HTTP_{key}'] = value
     
+    # Dict to capture the response
+    response_info = {
+        'status': 200,
+        'headers': [],
+        'body': b''
+    }
+    
     # Define a function to capture the response
     def start_response(status, headers):
-        context.res.status = int(status.split(' ')[0])
-        for header, value in headers:
-            context.res.headers[header] = value
+        response_info['status'] = int(status.split(' ')[0])
+        response_info['headers'] = headers
     
     # Process the request through Flask
-    response_data = b''
     for data in app(environ, start_response):
         if isinstance(data, str):
             data = data.encode('utf-8')
-        response_data += data
+        response_info['body'] += data
     
-    context.res.body = response_data
-    return context.res
+    # Set the status code
+    context.res.status = response_info['status']
+    
+    # Set headers using context.res methods
+    for header, value in response_info['headers']:
+        # Use set_header method instead of accessing headers dict
+        context.res.set_header(header, value)
+    
+    # Return the appropriate response object
+    if response_info['headers'] and dict(response_info['headers']).get('Content-Type', '').startswith('application/json'):
+        # For JSON responses
+        try:
+            return context.res.json(json.loads(response_info['body']))
+        except:
+            # Fall back to raw text if JSON parsing fails
+            return context.res.send(response_info['body'], response_info['status'])
+    else:
+        # For other content types
+        return context.res.send(response_info['body'], response_info['status'])
