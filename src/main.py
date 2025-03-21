@@ -33,16 +33,43 @@ if __name__ == '__main__':
 
 # For Appwrite Functions
 def main(context):
-    """
-    Main entry point for Appwrite Functions.
-    This function processes the request through the Flask app.
-    """
     # Get the path from the request
     path = context.req.path or "/"
     
+    # Create a mock body content based on the request type
+    if isinstance(context.req.body, dict):
+        # If body is already parsed as JSON dict
+        body_content = json.dumps(context.req.body).encode('utf-8')
+        # Make sure Content-Type reflects this
+        if 'content-type' not in context.req.headers:
+            context.req.headers['content-type'] = 'application/json'
+    elif context.req.body:
+        # If body exists but is not a dict
+        body_content = context.req.body
+    else:
+        # Empty body
+        body_content = b''
+    
+    # Create a stream-like object for the WSGI environment
+    class BodyStream:
+        def __init__(self, content):
+            self.content = content
+            self.position = 0
+        
+        def read(self, size=None):
+            if size is None:
+                result = self.content[self.position:]
+                self.position = len(self.content)
+            else:
+                result = self.content[self.position:self.position + size]
+                self.position += size
+            return result
+    
+    body_stream = BodyStream(body_content)
+    
     # Set up the WSGI environment
     environ = {
-        'wsgi.input': context.req.body,
+        'wsgi.input': body_stream,
         'wsgi.errors': None,
         'wsgi.version': (1, 0),
         'wsgi.multithread': False,
@@ -53,7 +80,7 @@ def main(context):
         'PATH_INFO': path,
         'QUERY_STRING': context.req.query_string or "",
         'CONTENT_TYPE': context.req.headers.get('content-type', ''),
-        'CONTENT_LENGTH': context.req.headers.get('content-length', ''),
+        'CONTENT_LENGTH': str(len(body_content)),
         'SERVER_NAME': 'appwrite-function',
         'SERVER_PORT': '443',
         'SERVER_PROTOCOL': 'HTTP/1.1',
@@ -76,31 +103,42 @@ def main(context):
         response_status = status
         response_headers = headers
     
-    # Process the request through Flask
-    for data in app(environ, start_response):
-        if isinstance(data, str):
-            data = data.encode('utf-8')
-        response_data.append(data)
+    try:
+        # Process the request through Flask
+        for data in app(environ, start_response):
+            if isinstance(data, str):
+                data = data.encode('utf-8')
+            response_data.append(data)
+        
+        # Combine all response chunks
+        body = b''.join(response_data)
+        
+        # Get the status code as an integer
+        status_code = int(response_status.split(' ')[0])
+        
+        # Check content type to determine response format
+        content_type = dict(response_headers).get('Content-Type', '')
+        
+        if content_type.startswith('application/json'):
+            try:
+                # For JSON responses
+                return context.res.json(json.loads(body.decode('utf-8')))
+            except:
+                # Fallback to text
+                return context.res.text(body.decode('utf-8'))
+        elif content_type.startswith('text/'):
+            # For text responses
+            return context.res.text(body.decode('utf-8'))
+        else:
+            # For binary responses
+            return context.res.binary(body)
     
-    # Combine all response chunks
-    body = b''.join(response_data)
-    
-    # Get the status code as an integer
-    status_code = int(response_status.split(' ')[0])
-    
-    # Check content type to determine response format
-    content_type = dict(response_headers).get('Content-Type', '')
-    
-    if content_type.startswith('application/json'):
-        try:
-            # For JSON responses
-            return context.res.json(json.loads(body))
-        except:
-            # Fallback to text
-            return context.res.text(body.decode('utf-8'), status_code)
-    elif content_type.startswith('text/'):
-        # For text responses
-        return context.res.text(body.decode('utf-8'), status_code)
-    else:
-        # For binary responses
-        return context.res.binary(body, status_code)
+    except Exception as e:
+        # Log the exception
+        context.error(f"Exception in Flask app: {str(e)}")
+        
+        # Return an error response
+        return context.res.json({
+            "error": "Internal Server Error",
+            "message": str(e)
+        }, 500)
