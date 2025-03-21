@@ -5,7 +5,7 @@ import json
 import re
 import google.generativeai as genai
 from flask_cors import CORS
-from config import configure_app
+from .config import configure_app
 from routes import register_routes
 
 def create_app():
