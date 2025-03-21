@@ -10,7 +10,7 @@ from appwrite.services.users import Users
 from appwrite.exception import AppwriteException
 
 from .config import configure_app
-from .routes import register
+from ..routes import register
 
 def create_app():
     """Create and configure the Flask application."""
