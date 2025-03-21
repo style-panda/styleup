@@ -33,6 +33,7 @@ if __name__ == '__main__':
 
 # For Appwrite Functions
 def main(context):
+    
     # Get the path from the request
     path = context.req.path or "/"
     
@@ -116,29 +117,60 @@ def main(context):
         # Get the status code as an integer
         status_code = int(response_status.split(' ')[0])
         
+        # Define allowed origins
+        allowed_origins = [
+            'https://yourdomain.com',
+            'https://app.yourdomain.com',
+            'http://localhost:3000',  # For development
+            'http://127.0.0.1:5500'   # Adding your local development server
+        ]
+        
+        # Get the origin from the request
+        origin = context.req.headers.get('origin', '')
+        
+        # Set CORS headers with the appropriate origin
+        cors_headers = {
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+            'Access-Control-Max-Age': '86400',  # 24 hours
+        }
+        
+        # Add the origin header only if it's in the allowed list
+        if origin in allowed_origins:
+            cors_headers['Access-Control-Allow-Origin'] = origin
+        
+        # Check if it's a preflight OPTIONS request
+        if context.req.method == 'OPTIONS':
+            # Return a successful preflight response with CORS headers
+            return context.res.json({}, status_code=200, headers=cors_headers)
+        
         # Check content type to determine response format
         content_type = dict(response_headers).get('Content-Type', '')
         
         if content_type.startswith('application/json'):
             try:
                 # For JSON responses
-                return context.res.json(json.loads(body.decode('utf-8')))
+                return context.res.json(json.loads(body.decode('utf-8')), headers=cors_headers)
             except:
                 # Fallback to text
-                return context.res.text(body.decode('utf-8'))
+                return context.res.text(body.decode('utf-8'), headers=cors_headers)
         elif content_type.startswith('text/'):
             # For text responses
-            return context.res.text(body.decode('utf-8'))
+            return context.res.text(body.decode('utf-8'), headers=cors_headers)
         else:
             # For binary responses
-            return context.res.binary(body)
+            return context.res.binary(body, headers=cors_headers)
     
     except Exception as e:
         # Log the exception
         context.error(f"Exception in Flask app: {str(e)}")
         
-        # Return an error response
+        # Return an error response with CORS headers
         return context.res.json({
             "error": "Internal Server Error",
             "message": str(e)
-        }, 500)
+        }, 500, headers={
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+        })
