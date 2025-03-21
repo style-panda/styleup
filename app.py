@@ -5,7 +5,7 @@ import json
 import re
 import google.generativeai as genai
 from flask_cors import CORS
-from prompts import image_analysis_prompt, form_and_user_analysis_to_suggestions_prompt
+from services.prompts import image_analysis_prompt, form_and_user_analysis_to_suggestions_prompt
 from config import configure_app
 from routes import register_routes
 

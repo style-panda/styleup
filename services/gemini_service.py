@@ -1,7 +1,9 @@
 import json
 import logging
 import google.generativeai as genai
-from prompts import image_analysis_prompt, form_and_user_analysis_to_suggestions_prompt
+
+from .prompts import image_analysis_prompt, form_and_user_analysis_to_suggestions_prompt
+
 
 logger = logging.getLogger(__name__)
 
