@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
-from services import image_service, gemini_service 
-from utils import response_parser
+from ..services import image_service, gemini_service 
+from ..utils import response_parser
 
 
 analysis_bp = Blueprint('analysis', __name__)
