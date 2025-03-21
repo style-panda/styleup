@@ -5,7 +5,7 @@ logger = logging.getLogger(__name__)
 
 def load_images(uploaded_images=None):
     """
-    Load images either from uploaded data or from specified local paths.
+    Load images from uploaded data.
     
     Args:
         uploaded_images (list, optional): List of uploaded image data from the client.
@@ -54,29 +54,6 @@ def load_images(uploaded_images=None):
         except Exception as e:
             logger.error(f"Error processing uploaded images: {str(e)}", exc_info=True)
             return None, f"Error processing uploaded images: {str(e)}"
-    
-    # Fall back to local images if no uploads provided
-    try:
-        logger.info("No uploaded images provided, falling back to local images")
-        from local_constants import image_paths  # Import here to avoid circular imports
-        
-        logger.info(f"Attempting to load {len(image_paths)} local images")
-        for i, path in enumerate(image_paths):
-            logger.info(f"Loading local image {i+1}/{len(image_paths)}: {path}")
-            try:
-                with open(path, "rb") as image_file:
-                    image_data = image_file.read()
-                    logger.info(f"Successfully loaded local image {path}, size: {len(image_data)} bytes")
-                    image_parts.append({"mime_type": "image/jpeg", "data": image_data})
-            except Exception as e:
-                logger.error(f"Error loading local image {path}: {str(e)}")
-                
-        if not image_parts:
-            logger.error("No local images could be loaded")
-            return None, "No images could be loaded"
-            
-        logger.info(f"Successfully loaded {len(image_parts)} local images")
-        return image_parts, None
-    except Exception as e:
-        logger.error(f"Error loading local images: {str(e)}", exc_info=True)
-        return None, f"Error loading images: {str(e)}"
+    else:
+        logger.info("No uploaded images provided")
+        return None, "No images provided"
