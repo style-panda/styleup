@@ -1,5 +1,5 @@
-from routes.analysis import analysis_bp
-from routes.suggestions import suggestions_bp
+from .analysis import analysis_bp
+from .suggestions import suggestions_bp
 
 def register_routes(app):
     """Register all blueprints/routes with the app."""
