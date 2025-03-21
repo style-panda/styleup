@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
-from services.image_service import load_images
-from services.gemini_service import analyze_with_gemini
-from utils.response_parser import parse_json_response
+from services import image_service, gemini_service 
+from utils import response_parser
+
 
 analysis_bp = Blueprint('analysis', __name__)
 
@@ -20,17 +20,17 @@ def analyze_images():
     uploaded_images = request.json.get('images') if request.is_json else None
     
 
-    image_parts, error = load_images(uploaded_images)
+    image_parts, error = image_service.load_images(uploaded_images)
     if error:
         return jsonify({"error": error}), 400
 
 
-    raw_text, error = analyze_with_gemini(image_parts)
+    raw_text, error = gemini_service.analyze_with_gemini(image_parts)
     if error:
         return jsonify({"error": f"Gemini API error: {error}"}), 500
     
     # Parse the response
-    result, error = parse_json_response(raw_text)
+    result, error = response_parser.parse_json_response(raw_text)
     if error:
         return jsonify({"error": f"Failed to parse JSON: {error}"}), 500
     
