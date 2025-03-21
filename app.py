@@ -25,5 +25,11 @@ def create_app():
 
 app = create_app()
 
+# For local development
 if __name__ == '__main__':
     app.run(debug=True)
+
+# For Appwrite Functions
+def appwrite_handler(req, res):
+    # Process the request using WSGI
+    return app(req.env, res.start_response)
