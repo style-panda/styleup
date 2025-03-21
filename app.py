@@ -6,7 +6,7 @@ import re
 import google.generativeai as genai
 from flask_cors import CORS
 from .config import configure_app
-from .routes import register_routes
+from .routes import register
 
 def create_app():
     """Create and configure the Flask application."""
@@ -17,7 +17,7 @@ def create_app():
     configure_app(app)
     
     # Register all routes
-    register_routes(app)
+    register.register_routes(app)
     
     return app
 
