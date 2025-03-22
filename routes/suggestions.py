@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
-from ..services import gemini_service
-from ..utils import response_parser
+from services import gemini_service
+from utils import response_parser
 
 suggestions_bp = Blueprint('suggestions', __name__)
 
