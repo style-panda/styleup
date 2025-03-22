@@ -1,8 +1,8 @@
 from flask import Blueprint, jsonify, request
-import sys, os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from services import image_service, gemini_service
 from utils import response_parser
+import json
+from collections import OrderedDict
 
 
 analysis_bp = Blueprint('analysis', __name__)
@@ -12,8 +12,16 @@ def analyze_images():
     """
     Process and analyze images using the Gemini API.
     
-    Accepts images either uploaded in the request or uses default images
-    from local paths if none are provided. Returns structured analysis results.
+    Accepts images as URLs in the request. Each image in the 'images' array
+    should be an object with 'url' and optional 'mime_type'.
+    
+    Example request:
+    {
+        "images": [
+            {"url": "https://example.com/image1.jpg"},
+            {"url": "https://example.com/image2.png", "mime_type": "image/png"}
+        ]
+    }
     
     Returns:
         JSON response with analysis results or error message
@@ -31,9 +39,15 @@ def analyze_images():
     if error:
         return jsonify({"error": f"Gemini API error: {error}"}), 500
     
-    # Parse the response
+
     result, error = response_parser.parse_json_response(raw_text)
     if error:
         return jsonify({"error": f"Failed to parse JSON: {error}"}), 500
     
-    return jsonify(result)
+    class OrderedEncoder(json.JSONEncoder):
+        def default(self, obj):
+            if isinstance(obj, OrderedDict):
+                return dict(obj)
+            return super().default(obj)
+    
+    return json.dumps(result, cls=OrderedEncoder), 200, {'Content-Type': 'application/json'}

@@ -1,15 +1,16 @@
 import logging
-import base64
+import requests
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
 def load_images(uploaded_images=None):
     """
-    Load images from uploaded data.
+    Load images from URLs.
     
     Args:
-        uploaded_images (list, optional): List of uploaded image data from the client.
-            Each item should be a dict with 'data' (base64 string) and 'mime_type'.
+        uploaded_images (list, optional): List of image URLs from the client.
+            Each item should be a dict with 'url' and optional 'mime_type'.
     
     Returns:
         tuple: (image_parts, error_message)
@@ -17,43 +18,61 @@ def load_images(uploaded_images=None):
     logger.info(f"load_images called with uploaded_images: {uploaded_images is not None}")
     image_parts = []
     
-    # If client uploaded images, use those
+    # If client provided image URLs, use those
     if uploaded_images:
         try:
-            logger.info(f"Processing {len(uploaded_images)} uploaded images")
+            logger.info(f"Processing {len(uploaded_images)} image URLs")
             for i, img in enumerate(uploaded_images):
                 logger.info(f"Processing image {i+1}/{len(uploaded_images)}")
                 
-                if 'data' not in img or 'mime_type' not in img:
-                    logger.error(f"Invalid image format for image {i+1}: missing data or mime_type")
-                    return None, "Invalid image format: missing data or mime_type"
+                # Check if URL is provided
+                if 'url' not in img:
+                    logger.error(f"Invalid image format for image {i+1}: missing url")
+                    return None, "Invalid image format: missing url"
                 
-                logger.info(f"Image {i+1} mime_type: {img['mime_type']}")
-                
-                # If data is base64 encoded, decode it
-                if isinstance(img['data'], str):
-                    try:
-                        logger.info(f"Decoding base64 data for image {i+1} (first 20 chars: {img['data'][:20]}...)")
-                        binary_data = base64.b64decode(img['data'])
-                        logger.info(f"Successfully decoded base64 data for image {i+1}, size: {len(binary_data)} bytes")
-                    except Exception as e:
-                        logger.error(f"Base64 decoding error for image {i+1}: {str(e)}")
-                        return None, f"Invalid image encoding: {str(e)}"
-                else:
-                    logger.info(f"Image {i+1} data is already binary, size: {len(img['data'])} bytes")
-                    binary_data = img['data']
-                
-                image_parts.append({
-                    "mime_type": img['mime_type'],
-                    "data": binary_data
-                })
+                try:
+                    logger.info(f"Processing image URL: {img['url']}")
+                    response = requests.get(img['url'], timeout=10)
+                    response.raise_for_status()  # Raise exception for 4XX/5XX responses
+                    
+                    binary_data = response.content
+                    
+                    # Try to determine mime_type if not provided
+                    mime_type = img.get('mime_type')
+                    if not mime_type:
+                        # Try to guess from content-type header
+                        mime_type = response.headers.get('Content-Type')
+                        # If still not available, try to guess from URL extension
+                        if not mime_type:
+                            path = urlparse(img['url']).path
+                            ext = path.split('.')[-1].lower() if '.' in path else ''
+                            if ext in ['jpg', 'jpeg']:
+                                mime_type = 'image/jpeg'
+                            elif ext in ['png']:
+                                mime_type = 'image/png'
+                            elif ext in ['gif']:
+                                mime_type = 'image/gif'
+                            elif ext in ['webp']:
+                                mime_type = 'image/webp'
+                            else:
+                                mime_type = 'application/octet-stream'
+                    
+                    logger.info(f"Image {i+1} from URL, size: {len(binary_data)} bytes, mime_type: {mime_type}")
+                    
+                    image_parts.append({
+                        "mime_type": mime_type,
+                        "data": binary_data
+                    })
+                except Exception as e:
+                    logger.error(f"Error fetching image URL for image {i+1}: {str(e)}")
+                    return None, f"Error fetching image URL: {str(e)}"
             
-            logger.info(f"Successfully processed {len(image_parts)} uploaded images")
+            logger.info(f"Successfully processed {len(image_parts)} image URLs")
             return image_parts, None
             
         except Exception as e:
-            logger.error(f"Error processing uploaded images: {str(e)}", exc_info=True)
-            return None, f"Error processing uploaded images: {str(e)}"
+            logger.error(f"Error processing image URLs: {str(e)}", exc_info=True)
+            return None, f"Error processing image URLs: {str(e)}"
     else:
-        logger.info("No uploaded images provided")
-        return None, "No images provided"
+        logger.info("No image URLs provided")
+        return None, "No image URLs provided"
