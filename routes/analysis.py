@@ -1,4 +1,6 @@
 from flask import Blueprint, jsonify, request
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from services import image_service, gemini_service
 from utils import response_parser
 

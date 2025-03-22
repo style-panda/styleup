@@ -1,3 +1,4 @@
+# Keep the imports at the top
 from flask import Flask, request, jsonify
 import os
 import base64
@@ -9,8 +10,13 @@ from appwrite.client import Client
 from appwrite.services.users import Users
 from appwrite.exception import AppwriteException
 
-# Use absolute imports instead of relative imports
-from src.config import configure_app
+# Keep the relative imports that work in Appwrite
+
+
+# To this line that will work in both environments
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from .config import configure_app
 from routes import register
 
 def create_app():
@@ -26,10 +32,13 @@ def create_app():
     
     return app
 
+# Create the app instance that will be imported by run.py
 app = create_app()
 
-# For local development
+# Modify the local development section
 if __name__ == '__main__':
+    # This will be executed when run as a module with python -m src.main
+    app = create_app()
     app.run(debug=True)
 
 # For Appwrite Functions
